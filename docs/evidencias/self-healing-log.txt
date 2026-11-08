@@ -1,0 +1,10 @@
+# Log do self-healer (pod self-healing/self-healer) - execucao real em 2026-11-08
+# Alerta: Taxa de erros HTTP 5xx acima de 5% -> rollout restart automatico
+
+2026-11-08 21:02:20 UTC | alvo fora da allowlist | {'namespace': '{{ .service_name }}', 'deployment': '{{ .service_name }}'}
+2026-11-08 21:18:20 UTC | alerta firing -> self-healing | {'alert': 'Taxa de erros HTTP 5xx acima de 5%', 'target': 'auth-service/auth-service'}
+2026-11-08 21:18:20 UTC | rollout restart executado | {'namespace': 'auth-service', 'deployment': 'auth-service', 'http_status': 200}
+2026-11-08 21:34:20 UTC | alerta firing -> self-healing | {'alert': 'Taxa de erros HTTP 5xx acima de 5%', 'target': 'auth-service/auth-service'}
+2026-11-08 21:34:20 UTC | alerta firing -> self-healing | {'alert': 'Taxa de erros HTTP 5xx acima de 5%', 'target': 'evaluation-service/evaluation-service'}
+2026-11-08 21:34:20 UTC | rollout restart executado | {'namespace': 'auth-service', 'deployment': 'auth-service', 'http_status': 200}
+2026-11-08 21:34:20 UTC | rollout restart executado | {'namespace': 'evaluation-service', 'deployment': 'evaluation-service', 'http_status': 200}

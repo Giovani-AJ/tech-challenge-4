@@ -3,6 +3,10 @@ kind: Application
 metadata:
   name: loki
   namespace: argocd
+  annotations:
+    # K8s 1.36 tem campos novos (ex.: status.terminatingReplicas) que o schema embutido do ArgoCD 2.13
+    # não conhece; o diff no servidor usa o schema do próprio cluster e evita o ComparisonError.
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
   project: default
   sources:
