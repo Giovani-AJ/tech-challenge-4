@@ -2,6 +2,7 @@
 # Grava no AWS Secrets Manager as chaves da observabilidade (New Relic, PagerDuty, Discord).
 # Pergunta cada valor SEM ecoar no terminal (nada vai para histórico, tela ou Git) e
 # preserva o SELFHEAL_TOKEN que o Terraform já gerou no mesmo segredo.
+# Enter em branco = mantém o valor que já está gravado (dá para trocar só uma chave).
 set -euo pipefail
 
 SECRET_ID="${SECRET_ID:-togglemaster/dev/togglemaster-dev-observability}"
@@ -11,17 +12,24 @@ current=$(aws secretsmanager get-secret-value --region "$REGION" --secret-id "$S
 token=$(printf '%s' "$current" | python -c "import sys,json; print(json.load(sys.stdin)['SELFHEAL_TOKEN'])")
 [ -n "$token" ] || { echo "SELFHEAL_TOKEN não encontrado em $SECRET_ID" >&2; exit 1; }
 
-ask() { # ask VAR "mensagem" [prefixo esperado]
+getcur() { printf '%s' "$current" | python -c "import sys,json; print(json.load(sys.stdin).get('$1',''))"; }
+CUR_NR=$(getcur NEW_RELIC_LICENSE_KEY); CUR_PD=$(getcur PAGERDUTY_INTEGRATION_KEY); CUR_DC=$(getcur DISCORD_WEBHOOK_URL)
+
+ask() { # ask VAR "mensagem" VALOR_ATUAL [prefixo esperado]
   local v
-  read -rsp "$2: " v; echo >&2
-  [ -n "$v" ] || { echo "valor vazio, abortando" >&2; exit 1; }
-  if [ -n "${3:-}" ] && [[ "$v" != $3* ]]; then echo "aviso: não começa com '$3' (confira se copiou o valor certo)" >&2; fi
+  read -rsp "$2 (Enter = manter atual): " v; echo >&2
+  if [ -z "$v" ]; then
+    if [ -z "$3" ] || [ "$3" = "REPLACE_ME" ]; then echo "sem valor atual, informe um" >&2; exit 1; fi
+    v="$3"; echo "  mantido." >&2
+  elif [ -n "${4:-}" ] && [[ "$v" != $4* ]]; then
+    echo "  aviso: não começa com '$4' (confira se copiou o valor certo)" >&2
+  fi
   printf -v "$1" '%s' "$v"
 }
 
-ask NR  "New Relic license key (INGEST - LICENSE)"
-ask PD  "PagerDuty Integration Key (Events API v2)"
-ask DC  "Discord webhook URL" "https://discord.com/api/webhooks/"
+ask NR  "New Relic license key (INGEST - LICENSE)" "$CUR_NR"
+ask PD  "PagerDuty Integration Key (Events API v2)" "$CUR_PD"
+ask DC  "Discord webhook URL" "$CUR_DC" "https://discord.com/api/webhooks/"
 
 payload=$(NR="$NR" PD="$PD" DC="$DC" TOKEN="$token" python -c "
 import json,os
