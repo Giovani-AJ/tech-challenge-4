@@ -72,7 +72,7 @@ variable "github_org" {
 variable "github_source_repo" {
   type        = string
   description = "Nome do monorepo (código + terraform + gitops) autorizado via OIDC a publicar no ECR"
-  default     = "tech-challenge-3"
+  default     = "tech-challenge-4"
 }
 
 variable "ecr_repository_names" {

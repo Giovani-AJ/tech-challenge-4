@@ -1,0 +1,57 @@
+# kube-prometheus-stack gerenciado pelo ArgoCD (antes era um helm_release do Terraform).
+# Prometheus + Grafana + Alertmanager. O Grafana ganha o Loki como datasource e carrega
+# dashboards de ConfigMaps com o label grafana_dashboard=1 (gitops/observability/resources).
+fullnameOverride: kube-prometheus-stack
+
+prometheus:
+  prometheusSpec:
+    # Descobre ServiceMonitors/PodMonitors/regras de qualquer release (ex.: ingress-nginx).
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    # Permite o OTel Collector enviar métricas via remote write (/api/v1/write).
+    enableRemoteWriteReceiver: true
+    retention: 6h
+    resources:
+      requests: { cpu: 200m, memory: 600Mi }
+      limits: { memory: 1200Mi }
+
+alertmanager:
+  enabled: true                # fase D: roteamento para PagerDuty/Discord
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+
+grafana:
+  service:
+    type: ClusterIP
+  # PAGERDUTY_INTEGRATION_KEY, DISCORD_WEBHOOK_URL e SELFHEAL_TOKEN viram variáveis de
+  # ambiente do Grafana; o provisioning de alertas as referencia como ${VAR}.
+  envFromSecrets:
+    - name: observability-secrets
+      optional: true
+  sidecar:
+    alerts:
+      enabled: true          # carrega ConfigMaps com label grafana_alert=1 (regras/contact points)
+      label: grafana_alert
+      searchNamespace: ALL
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc:3100
+      isDefault: false
+  resources:
+    requests: { cpu: 50m, memory: 150Mi }
+
+# Enxuga componentes que não existem/acessíveis no EKS gerenciado.
+kubeEtcd: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeControllerManager: { enabled: false }

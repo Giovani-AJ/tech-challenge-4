@@ -1,0 +1,105 @@
+# Alerting do Grafana provisionado como código (sidecar grafana_alert=1):
+#  - contact point "togglemaster-oncall" com 3 integrações disparadas juntas:
+#      PagerDuty (abre o incidente), Discord (ChatOps) e webhook do self-healer (Runbook Automation)
+#  - política de notificação com agrupamento e repeat_interval longo (combate alert fatigue)
+#  - regra: taxa de HTTP 5xx > 5% por serviço (uma instância de alerta por service_name)
+# Segredos entram como ${VAR} (vêm do Secret observability-secrets, via ESO -> env do Grafana).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alerting-togglemaster
+  namespace: monitoring
+  labels:
+    grafana_alert: "1"
+data:
+  togglemaster-alerting.yaml: |
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: togglemaster-oncall
+        receivers:
+          - uid: pagerduty-oncall
+            type: pagerduty
+            settings:
+              integrationKey: ${PAGERDUTY_INTEGRATION_KEY}
+              severity: critical
+              class: http-5xx
+              component: '{{ .CommonLabels.service_name }}'
+              group: togglemaster
+              summary: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }} - {{ .CommonLabels.service_name }}'
+          - uid: discord-chatops
+            type: discord
+            settings:
+              url: ${DISCORD_WEBHOOK_URL}
+              title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+              message: |
+                **Serviço:** {{ .CommonLabels.service_name }}
+                **Severidade:** {{ .CommonLabels.severity }}
+                {{ range .Alerts }}{{ .Annotations.description }}
+                Valor: {{ .ValueString }}
+                Self-healing: rollout restart de `{{ .Labels.selfheal_deployment }}` acionado automaticamente.
+                {{ end }}
+          - uid: self-healing-webhook
+            type: webhook
+            settings:
+              url: http://self-healer.self-healing.svc.cluster.local:8080/heal
+              httpMethod: POST
+              authorization_scheme: Bearer
+              authorization_credentials: ${SELFHEAL_TOKEN}
+    policies:
+      - orgId: 1
+        receiver: togglemaster-oncall
+        group_by: [alertname, service_name]
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+    groups:
+      - orgId: 1
+        name: togglemaster-slo
+        folder: ToggleMaster
+        interval: 1m
+        rules:
+          - uid: http-5xx-rate-per-service
+            title: Taxa de erros HTTP 5xx acima de 5%
+            condition: C
+            for: 2m
+            noDataState: OK
+            execErrState: OK
+            labels:
+              severity: critical
+              service_name: '{{ $labels.service_name }}'
+              selfheal_namespace: '{{ $labels.service_name }}'
+              selfheal_deployment: '{{ $labels.service_name }}'
+            annotations:
+              summary: '{{ $labels.service_name }}: erros 5xx acima de 5%'
+              description: 'O serviço {{ $labels.service_name }} responde 5xx em mais de 5% das requisições nos últimos 2 minutos.'
+              runbook_url: https://github.com/Giovani-AJ/tech-challenge-4/blob/main/docs/OBSERVABILIDADE.md
+            data:
+              - refId: A
+                relativeTimeRange: { from: 600, to: 0 }
+                datasourceUid: prometheus
+                model:
+                  refId: A
+                  instant: true
+                  # % de spans SERVER com erro (5xx) por serviço; ignora serviços com pouco tráfego
+                  # (< ~6 req/min) para não alertar por 1 ou 2 requisições ruins.
+                  expr: >-
+                    100 * sum by (service_name) (rate(traces_span_metrics_calls_total{span_kind="SPAN_KIND_SERVER",status_code="STATUS_CODE_ERROR"}[2m]))
+                    / sum by (service_name) (rate(traces_span_metrics_calls_total{span_kind="SPAN_KIND_SERVER"}[2m]))
+                    and sum by (service_name) (rate(traces_span_metrics_calls_total{span_kind="SPAN_KIND_SERVER"}[2m])) > 0.1
+              - refId: B
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  expression: A
+                  reducer: last
+                  settings: { mode: dropNN }
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions:
+                    - evaluator: { type: gt, params: [5] }

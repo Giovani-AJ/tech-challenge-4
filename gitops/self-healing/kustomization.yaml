@@ -1,0 +1,12 @@
+# Kustomize empacota o healer.py como ConfigMap (o nome ganha um hash: mudar o script
+# troca o ConfigMap e o Deployment reinicia sozinho).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - external-secret.yaml
+  - rbac.yaml
+  - deployment.yaml
+configMapGenerator:
+  - name: healer-script
+    files:
+      - healer.py

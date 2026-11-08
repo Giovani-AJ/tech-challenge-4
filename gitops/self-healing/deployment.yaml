@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: self-healer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-healer
+  labels: { app: self-healer }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: self-healer }
+  template:
+    metadata:
+      labels: { app: self-healer }
+    spec:
+      serviceAccountName: self-healer
+      containers:
+        - name: self-healer
+          image: python:3.11-alpine
+          command: ["python", "-u", "/app/healer.py"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: COOLDOWN_SECONDS
+              value: "300"
+          envFrom:
+            - secretRef:
+                name: self-healer-secret
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 25m, memory: 48Mi }
+            limits: { memory: 96Mi }
+          volumeMounts:
+            - name: script
+              mountPath: /app
+      volumes:
+        - name: script
+          configMap:
+            name: healer-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: self-healer
+spec:
+  selector: { app: self-healer }
+  ports:
+    - port: 8080
+      targetPort: 8080

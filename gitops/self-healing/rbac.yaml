@@ -1,0 +1,127 @@
+# RBAC mínimo: o self-healer só consegue ler/patchear OS 5 deployments dos microsserviços
+# (Role por namespace com resourceNames), nada além disso.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: self-healer-restart
+  namespace: auth-service
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["auth-service"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: self-healer-restart
+  namespace: auth-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: self-healer-restart
+subjects:
+  - kind: ServiceAccount
+    name: self-healer
+    namespace: self-healing
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: self-healer-restart
+  namespace: flag-service
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["flag-service"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: self-healer-restart
+  namespace: flag-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: self-healer-restart
+subjects:
+  - kind: ServiceAccount
+    name: self-healer
+    namespace: self-healing
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: self-healer-restart
+  namespace: targeting-service
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["targeting-service"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: self-healer-restart
+  namespace: targeting-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: self-healer-restart
+subjects:
+  - kind: ServiceAccount
+    name: self-healer
+    namespace: self-healing
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: self-healer-restart
+  namespace: evaluation-service
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["evaluation-service"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: self-healer-restart
+  namespace: evaluation-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: self-healer-restart
+subjects:
+  - kind: ServiceAccount
+    name: self-healer
+    namespace: self-healing
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: self-healer-restart
+  namespace: analytics-service
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["analytics-service"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: self-healer-restart
+  namespace: analytics-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: self-healer-restart
+subjects:
+  - kind: ServiceAccount
+    name: self-healer
+    namespace: self-healing

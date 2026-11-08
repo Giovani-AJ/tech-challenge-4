@@ -8,3 +8,11 @@ data:
   AWS_REGION: "us-east-1"
   AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/681447159486/togglemaster-dev-evaluation-events"
   AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
+  # --- OpenTelemetry (Fase 4): traces -> OTel Collector gateway (namespace monitoring) ---
+  OTEL_SERVICE_NAME: "analytics-service"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-gateway.monitoring.svc.cluster.local:4318"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+  OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=dev,service.namespace=togglemaster"
+  OTEL_METRICS_EXPORTER: "none"   # métricas RED saem dos traces (spanmetrics no Collector)
+  OTEL_LOGS_EXPORTER: "none"      # logs já são coletados do stdout pelo otel-agent
+  OTEL_PYTHON_FLASK_EXCLUDED_URLS: "health"   # não gera trace das probes do K8s

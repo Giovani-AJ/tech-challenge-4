@@ -14,3 +14,8 @@ data:
   AWS_REGION: "us-east-1"
   REDIS_URL: "redis://togglemaster-dev-redis.2sqrvb.0001.use1.cache.amazonaws.com:6379"
   AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/681447159486/togglemaster-dev-evaluation-events"
+  # --- OpenTelemetry (Fase 4): traces -> OTel Collector gateway (namespace monitoring) ---
+  OTEL_SERVICE_NAME: "evaluation-service"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-gateway.monitoring.svc.cluster.local:4318"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+  OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=dev,service.namespace=togglemaster"

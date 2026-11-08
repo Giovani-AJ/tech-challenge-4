@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Giovani-AJ/tech-challenge-3.git
+    repoURL: https://github.com/Giovani-AJ/tech-challenge-4.git
     targetRevision: HEAD
     path: gitops/apps/auth-service
   destination:

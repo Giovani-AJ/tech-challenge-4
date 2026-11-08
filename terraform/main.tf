@@ -93,6 +93,33 @@ resource "aws_secretsmanager_secret_version" "evaluation_service_api_key" {
   }
 }
 
+## Segredos da observabilidade (Fase 4): chaves do New Relic/PagerDuty e webhook do Discord.
+## O Terraform só reserva o "slot" (valores REPLACE_ME); os valores reais são colocados à mão
+## uma vez (`aws secretsmanager put-secret-value`, ver docs/OBSERVABILIDADE.md) — nunca no Git.
+## SELFHEAL_TOKEN é gerado aqui: autentica o webhook Grafana -> self-healer.
+resource "random_password" "selfheal_token" {
+  length  = 40
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "observability" {
+  name = "${local.secret_prefix}/${local.name_prefix}-observability"
+}
+
+resource "aws_secretsmanager_secret_version" "observability" {
+  secret_id = aws_secretsmanager_secret.observability.id
+  secret_string = jsonencode({
+    NEW_RELIC_LICENSE_KEY     = "REPLACE_ME"
+    PAGERDUTY_INTEGRATION_KEY = "REPLACE_ME"
+    DISCORD_WEBHOOK_URL       = "REPLACE_ME"
+    SELFHEAL_TOKEN            = random_password.selfheal_token.result
+  })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 module "targeting_db" {
   source = "./modules/rds"
 
@@ -235,13 +262,9 @@ module "keda" {
   depends_on = [module.eks]
 }
 
-# --- Prometheus + Grafana: observabilidade (enriquecimento além do mínimo pedido) ---
-
-module "monitoring" {
-  source = "./modules/monitoring"
-
-  depends_on = [module.eks]
-}
+# --- Observabilidade (Fase 4): Prometheus, Grafana, Alertmanager, Loki e OTel Collector ---
+# Deixaram de ser provisionados aqui: agora são Applications do ArgoCD
+# (gitops/argocd-applications/ + gitops/observability/), como pede o enunciado.
 
 # --- IRSA dos microsserviços que falam direto com SQS/DynamoDB ---
 # (auth/flag/targeting só usam Postgres, cuja credencial já vem via ESO; não precisam de IRSA)

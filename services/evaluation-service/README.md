@@ -17,7 +17,7 @@ Ele funciona da seguinte forma:
 
 ## 📦 Pré-requisitos (Local)
 
-* [Go](https://go.dev/doc/install) (versão 1.21 ou superior)
+* [Go](https://go.dev/doc/install) (versão 1.23 ou superior)
 * [Redis](https://redis.io/docs/getting-started/installation/) (rodando localmente ou em Docker)
 * Os serviços `auth-service`, `flag-service` e `targeting-service` devem estar rodando.
 * **Credenciais da AWS:** Para o SQS funcionar, seu terminal deve estar autenticado na AWS (ex: via `aws configure` ou variáveis de ambiente).

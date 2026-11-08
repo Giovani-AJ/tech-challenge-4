@@ -1,0 +1,23 @@
+# Dashboards do Grafana (ConfigMaps) e demais recursos de observabilidade em YAML puro.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-resources
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Giovani-AJ/tech-challenge-4.git
+    targetRevision: HEAD
+    path: gitops/observability/resources
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

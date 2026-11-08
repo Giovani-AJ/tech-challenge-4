@@ -1,0 +1,52 @@
+# OTel Collector "agent" (DaemonSet): lê os logs de TODOS os contêineres do nó
+# (/var/log/pods), enriquece com metadados do K8s e entrega ao gateway via OTLP.
+# Garante o requisito "logs centralizados" mesmo para pods sem instrumentação.
+mode: daemonset
+fullnameOverride: otel-agent
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+  kubernetesAttributes:
+    enabled: true
+
+resources:
+  requests: { cpu: 50m, memory: 100Mi }
+  limits: { memory: 200Mi }
+
+ports:
+  otlp: { enabled: false }
+  otlp-http: { enabled: false }
+  jaeger-compact: { enabled: false }
+  jaeger-thrift: { enabled: false }
+  jaeger-grpc: { enabled: false }
+  zipkin: { enabled: false }
+
+config:
+  receivers:
+    jaeger: null
+    prometheus: null
+    zipkin: null
+    otlp: null
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_percentage: 25
+    batch: {}
+  exporters:
+    otlp/gateway:
+      endpoint: otel-gateway.monitoring.svc:4317
+      tls: { insecure: true }
+  service:
+    pipelines:
+      logs:
+        receivers: [filelog]
+        processors: [k8sattributes, memory_limiter, batch]
+        exporters: [otlp/gateway]
+      traces: null
+      metrics: null

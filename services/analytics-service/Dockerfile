@@ -12,7 +12,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # 4. Copia o restante do código fonte
-COPY app.py .
+COPY app.py gunicorn.conf.py ./
 
 # ==========================================
 # ESTÁGIO 2: Imagem Final de Produção
@@ -33,4 +33,4 @@ USER appuser
 
 EXPOSE 8005
 
-CMD ["gunicorn","--bind","0.0.0.0:8005","app:app"]
+CMD ["gunicorn","-c","gunicorn.conf.py","--bind","0.0.0.0:8005","app:app"]

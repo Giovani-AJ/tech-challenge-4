@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/XSAM/otelsql"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/joho/godotenv"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 // App struct (para injeção de dependência)
@@ -36,6 +39,10 @@ func main() {
 		log.Fatal("MASTER_KEY deve ser definida")
 	}
 
+	// --- Observabilidade (OpenTelemetry) ---
+	shutdownTelemetry := initTelemetry("auth-service")
+	defer func() { _ = shutdownTelemetry(context.Background()) }()
+
 	// --- Conexão com o Banco ---
 	db, err := connectDB(databaseURL)
 	if err != nil {
@@ -60,14 +67,16 @@ func main() {
 	mux.Handle("/admin/keys", app.masterKeyAuthMiddleware(http.HandlerFunc(app.createKeyHandler)))
 
 	log.Printf("Serviço de Autenticação (Go) rodando na porta %s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, instrumentHandler(mux)); err != nil {
 		log.Fatal(err)
 	}
 }
 
 // connectDB inicializa e testa a conexão com o PostgreSQL
 func connectDB(databaseURL string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", databaseURL)
+	// otelsql gera um span por query (db.system=postgresql) dentro do trace da requisição.
+	db, err := otelsql.Open("pgx", databaseURL, otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
+		otelsql.WithSpanOptions(otelsql.SpanOptions{OmitConnResetSession: true, OmitRows: true}))
 	if err != nil {
 		return nil, err
 	}

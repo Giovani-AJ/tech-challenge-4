@@ -1,0 +1,89 @@
+# OTel Collector "gateway": ponto central de telemetria. Os microsserviços enviam
+# OTLP (traces/métricas/logs) para cá; ele roteia para os backends:
+#   traces  -> spanmetrics (vira métrica RED no Prometheus) + APM (New Relic)
+#   metrics -> Prometheus (remote write)
+#   logs    -> Loki (OTLP nativo)
+mode: deployment
+replicaCount: 1
+fullnameOverride: otel-gateway
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+# Chave do New Relic vem do Secrets Manager (ESO -> Secret observability-secrets).
+# optional: o pod sobe mesmo antes da chave existir (o exporter só loga erro de auth).
+extraEnvs:
+  - name: NEW_RELIC_LICENSE_KEY
+    valueFrom:
+      secretKeyRef:
+        name: observability-secrets
+        key: NEW_RELIC_LICENSE_KEY
+        optional: true
+
+resources:
+  requests: { cpu: 100m, memory: 200Mi }
+  limits: { memory: 400Mi }
+
+ports:
+  otlp: { enabled: true, containerPort: 4317, servicePort: 4317, protocol: TCP }
+  otlp-http: { enabled: true, containerPort: 4318, servicePort: 4318, protocol: TCP }
+  jaeger-compact: { enabled: false }
+  jaeger-thrift: { enabled: false }
+  jaeger-grpc: { enabled: false }
+  zipkin: { enabled: false }
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc: { endpoint: 0.0.0.0:4317 }
+        http: { endpoint: 0.0.0.0:4318 }
+    jaeger: null
+    prometheus: null
+    zipkin: null
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_percentage: 25
+    batch: {}
+  connectors:
+    # Gera métricas RED a partir dos spans: traces_span_metrics_calls_total{service_name,status_code,...}
+    spanmetrics:
+      histogram:
+        explicit:
+          buckets: [10ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s]
+      dimensions:
+        - name: http.response.status_code
+        - name: http.status_code
+        - name: http.route
+        - name: http.method
+      metrics_flush_interval: 15s
+  exporters:
+    debug: { verbosity: basic }
+    prometheusremotewrite:
+      endpoint: http://kube-prometheus-stack-prometheus.monitoring.svc:9090/api/v1/write
+      resource_to_telemetry_conversion: { enabled: true }
+    otlphttp/loki:
+      endpoint: http://loki.monitoring.svc:3100/otlp
+    # APM: New Relic via OTLP/HTTP (região US). Conta na UE: https://otlp.eu01.nr-data.net
+    otlphttp/newrelic:
+      endpoint: https://otlp.nr-data.net
+      headers:
+        api-key: ${env:NEW_RELIC_LICENSE_KEY}
+      compression: gzip
+      retry_on_failure: { enabled: true, max_elapsed_time: 60s }
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [spanmetrics, otlphttp/newrelic, debug]
+      metrics:
+        receivers: [otlp, spanmetrics]
+        processors: [memory_limiter, batch]
+        exporters: [prometheusremotewrite]
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlphttp/loki]
