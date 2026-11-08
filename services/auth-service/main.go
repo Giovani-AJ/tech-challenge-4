@@ -66,6 +66,12 @@ func main() {
 	// Eles são protegidos pelo middleware de autenticação
 	mux.Handle("/admin/keys", app.masterKeyAuthMiddleware(http.HandlerFunc(app.createKeyHandler)))
 
+	// Injeção de falha para a demo de self-healing (desligada por padrão).
+	if chaosEnabled() {
+		mux.Handle("/admin/chaos", app.masterKeyAuthMiddleware(http.HandlerFunc(app.chaosHandler)))
+		log.Println("ATENÇÃO: CHAOS_ENABLED=true — endpoint /admin/chaos ativo (apenas para demonstração)")
+	}
+
 	log.Printf("Serviço de Autenticação (Go) rodando na porta %s", port)
 	if err := http.ListenAndServe(":"+port, instrumentHandler(mux)); err != nil {
 		log.Fatal(err)

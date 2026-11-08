@@ -105,3 +105,23 @@ Prometheus (spanmetrics) ─► Grafana Alerting: "HTTP 5xx > 5% por serviço" (
 - **Self-healing:** `gitops/self-healing/` (script `healer.py` em ConfigMap, Python stdlib).
   Exige token, só age nos 5 deployments (allowlist + RBAC com `resourceNames`) e tem cooldown de
   5 min por deployment para não entrar em loop de restart.
+
+## Roteiro da falha proposital (demonstração)
+
+O auth-service tem um endpoint de injeção de falha (`/admin/chaos`, só com `CHAOS_ENABLED=true`,
+protegido pela MASTER_KEY). A falha fica na memória do pod: `/validate` passa a responder 500
+até o processo reiniciar. É o cenário em que **reiniciar realmente resolve**.
+
+```bash
+# 1) port-forward do auth-service e master key
+kubectl port-forward -n auth-service svc/auth-service 8001:8001 &
+MK=$(kubectl get secret auth-secret -n auth-service -o jsonpath='{.data.MASTER_KEY}' | base64 -d)
+
+# 2) injeta a falha (repita algumas vezes: cada chamada cai em um dos 2 pods) e gera tráfego
+for i in 1 2 3 4; do curl -s -X POST "localhost:8001/admin/chaos?mode=break" -H "Authorization: Bearer $MK"; done
+for i in $(seq 1 300); do curl -s -o /dev/null -w "%{http_code}\n" localhost:8001/validate -H "Authorization: Bearer x"; sleep 0.2; done | sort | uniq -c
+
+# 3) acompanhe: Grafana (alerta Firing) -> PagerDuty -> Discord -> pods reiniciando
+kubectl get pods -n auth-service -w
+kubectl logs -n self-healing deploy/self-healer -f
+```

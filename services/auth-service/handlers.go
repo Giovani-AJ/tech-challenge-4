@@ -29,6 +29,12 @@ func (a *App) healthHandler(w http.ResponseWriter, r *http.Request) {
 
 // validateKeyHandler verifica se uma chave de API (enviada via Header) é válida
 func (a *App) validateKeyHandler(w http.ResponseWriter, r *http.Request) {
+	// Falha injetada (somente com CHAOS_ENABLED=true; ver chaos.go): simula um pod "doente".
+	if chaosBroken.Load() {
+		http.Error(w, "erro interno (falha injetada)", http.StatusInternalServerError)
+		return
+	}
+
 	// Extrai a chave do header "Authorization: Bearer <key>"
 	authHeader := r.Header.Get("Authorization")
 	keyString := strings.TrimPrefix(authHeader, "Bearer ")
