@@ -3,7 +3,8 @@
 #      PagerDuty (abre o incidente), Discord (ChatOps) e webhook do self-healer (Runbook Automation)
 #  - política de notificação com agrupamento e repeat_interval longo (combate alert fatigue)
 #  - regra: taxa de HTTP 5xx > 5% por serviço (uma instância de alerta por service_name)
-# Segredos entram como ${VAR} (vêm do Secret observability-secrets, via ESO -> env do Grafana).
+# ATENÇÃO: o Grafana expande $VAR em arquivos de provisionamento; por isso $labels é escrito
+# como $$labels (escape). Segredos entram como ${VAR} (vêm do Secret observability-secrets, via ESO -> env do Grafana).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -67,12 +68,12 @@ data:
             execErrState: OK
             labels:
               severity: critical
-              service_name: '{{ $labels.service_name }}'
-              selfheal_namespace: '{{ $labels.service_name }}'
-              selfheal_deployment: '{{ $labels.service_name }}'
+              service_name: '{{ $$labels.service_name }}'
+              selfheal_namespace: '{{ $$labels.service_name }}'
+              selfheal_deployment: '{{ $$labels.service_name }}'
             annotations:
-              summary: '{{ $labels.service_name }}: erros 5xx acima de 5%'
-              description: 'O serviço {{ $labels.service_name }} responde 5xx em mais de 5% das requisições nos últimos 2 minutos.'
+              summary: '{{ $$labels.service_name }}: erros 5xx acima de 5%'
+              description: 'O serviço {{ $$labels.service_name }} responde 5xx em mais de 5% das requisições nos últimos 2 minutos.'
               runbook_url: https://github.com/Giovani-AJ/tech-challenge-4/blob/main/docs/OBSERVABILIDADE.md
             data:
               - refId: A
