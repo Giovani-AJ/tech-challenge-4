@@ -98,7 +98,7 @@ Prometheus (spanmetrics) ─► Grafana Alerting: "HTTP 5xx > 5% por serviço" (
   (`aws secretsmanager get-secret-value ...`). Depois force a sincronização:
   `kubectl annotate externalsecret -n monitoring observability-secrets force-sync=$(date +%s) --overwrite`
   (idem em `self-healing`) e reinicie o Grafana e o gateway.
-- **Alerta:** `gitops/observability/resources/grafana-alerting.yaml`. Uma instância por
+- **Alerta:** `gitops/observability/alerting/grafana-alerting.yaml`. Uma instância por
   `service_name`; os labels `selfheal_namespace/selfheal_deployment` dizem ao self-healer o alvo.
   Anti alert-fatigue: agrupa por alerta+serviço, `repeat_interval` 4h e ignora serviços com
   pouco tráfego.
