@@ -9,9 +9,11 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
@@ -56,8 +58,28 @@ func initTelemetry(defaultServiceName string) func(context.Context) error {
 		sdktrace.WithResource(res),
 	)
 	otel.SetTracerProvider(tp)
-	log.Println("OpenTelemetry ativado: traces enviados via OTLP/HTTP.")
-	return tp.Shutdown
+
+	// Métricas (http.server.request.duration etc., geradas pelo otelhttp): o APM do New Relic
+	// monta o resumo do serviço (tempo de resposta, vazão, erros) a partir delas. A temporalidade
+	// "delta" exigida pelo New Relic vem de OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE.
+	var mp *sdkmetric.MeterProvider
+	if mexp, merr := otlpmetrichttp.New(ctx); merr != nil {
+		log.Printf("Aviso: falha ao criar exporter de métricas OTLP: %v", merr)
+	} else {
+		mp = sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(mexp, sdkmetric.WithInterval(15*time.Second))),
+			sdkmetric.WithResource(res),
+		)
+		otel.SetMeterProvider(mp)
+	}
+
+	log.Println("OpenTelemetry ativado: traces e métricas enviados via OTLP/HTTP.")
+	return func(c context.Context) error {
+		if mp != nil {
+			_ = mp.Shutdown(c)
+		}
+		return tp.Shutdown(c)
+	}
 }
 
 // instrumentHandler envolve o mux com o middleware OTel (um span SERVER por requisição).

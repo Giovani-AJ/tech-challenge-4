@@ -9,6 +9,7 @@ data:
   OTEL_SERVICE_NAME: "auth-service"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-gateway.monitoring.svc.cluster.local:4318"
   OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+  OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: "delta"   # exigido pelo New Relic
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=dev,service.namespace=togglemaster"
   # Demo de self-healing (Fase 4): habilita POST /admin/chaos (protegido pela MASTER_KEY).
   # Em produção real isso ficaria "false"/ausente.

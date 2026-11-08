@@ -1,7 +1,7 @@
 # OTel Collector "gateway": ponto central de telemetria. Os microsserviços enviam
 # OTLP (traces/métricas/logs) para cá; ele roteia para os backends:
 #   traces  -> spanmetrics (vira métrica RED no Prometheus) + APM (New Relic)
-#   metrics -> Prometheus (remote write)
+#   metrics -> spanmetrics para o Prometheus (remote write); métricas dos serviços para o New Relic
 #   logs    -> Loki (OTLP nativo)
 mode: deployment
 replicaCount: 1
@@ -79,10 +79,17 @@ config:
         receivers: [otlp]
         processors: [memory_limiter, batch]
         exporters: [spanmetrics, otlphttp/newrelic, debug]
+      # Métricas RED derivadas dos traces -> Prometheus (dashboard e alerta do Grafana).
       metrics:
-        receivers: [otlp, spanmetrics]
+        receivers: [spanmetrics]
         processors: [memory_limiter, batch]
         exporters: [prometheusremotewrite]
+      # Métricas OTel dos serviços (temporalidade delta) -> New Relic (resumo do APM).
+      # Separadas porque o remote write do Prometheus descarta métricas delta.
+      metrics/newrelic:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlphttp/newrelic]
       logs:
         receivers: [otlp]
         processors: [memory_limiter, batch]

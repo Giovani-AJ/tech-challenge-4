@@ -10,7 +10,7 @@ data:
   OTEL_SERVICE_NAME: "targeting-service"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-gateway.monitoring.svc.cluster.local:4318"
   OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+  OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: "delta"   # exigido pelo New Relic
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=dev,service.namespace=togglemaster"
-  OTEL_METRICS_EXPORTER: "none"   # métricas RED saem dos traces (spanmetrics no Collector)
   OTEL_LOGS_EXPORTER: "none"      # logs já são coletados do stdout pelo otel-agent
   OTEL_PYTHON_FLASK_EXCLUDED_URLS: "health"   # não gera trace das probes do K8s
