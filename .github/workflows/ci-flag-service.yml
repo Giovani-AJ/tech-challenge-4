@@ -130,5 +130,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "gitops/apps/flag-service/deployment.yaml"
           git commit -m "chore(flag-service): atualiza imagem para ${{ needs.docker-build-push.outputs.image_tag }}" || exit 0
-          git pull --rebase origin main
-          git push
+          # Os 5 pipelines commitam na main ao mesmo tempo: tenta de novo em caso de corrida.
+          for i in 1 2 3 4 5 6; do
+            git pull --rebase origin main && git push && exit 0
+            echo "push rejeitado (tentativa $i), aguardando e tentando de novo..."
+            sleep $((RANDOM % 8 + 3))
+          done
+          echo "falha ao publicar a tag no gitops" >&2
+          exit 1

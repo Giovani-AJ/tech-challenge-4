@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
           cache: true
           cache-dependency-path: services/auth-service/go.sum
       - run: go build -v ./...
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
@@ -66,7 +66,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
       - name: gosec - SAST
         working-directory: services/auth-service
         run: |
@@ -135,5 +135,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "gitops/apps/auth-service/deployment.yaml"
           git commit -m "chore(auth-service): atualiza imagem para ${{ needs.docker-build-push.outputs.image_tag }}" || exit 0
-          git pull --rebase origin main
-          git push
+          # Os 5 pipelines commitam na main ao mesmo tempo: tenta de novo em caso de corrida.
+          for i in 1 2 3 4 5 6; do
+            git pull --rebase origin main && git push && exit 0
+            echo "push rejeitado (tentativa $i), aguardando e tentando de novo..."
+            sleep $((RANDOM % 8 + 3))
+          done
+          echo "falha ao publicar a tag no gitops" >&2
+          exit 1
