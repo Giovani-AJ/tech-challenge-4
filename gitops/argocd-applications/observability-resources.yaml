@@ -21,3 +21,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true   # ServiceMonitor/ExternalSecret dependem de CRDs de outros charts

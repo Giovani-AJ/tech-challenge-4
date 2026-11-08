@@ -1,6 +1,6 @@
-# Prometheus (instalado via Terraform, módulo "monitoring") descobre este
+# Prometheus (kube-prometheus-stack, instalado pelo ArgoCD) descobre este
 # ServiceMonitor automaticamente (serviceMonitorSelectorNilUsesHelmValues=false,
-# ver módulo) e passa a raspar métricas que o ingress-nginx já expõe desde que foi
+# ver gitops/observability/prometheus-stack/values.yaml) e passa a raspar métricas que o ingress-nginx já expõe desde que foi
 # instalado (controller.metrics.enabled=true), mas que até agora ninguém consumia.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
