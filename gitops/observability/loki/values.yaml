@@ -29,6 +29,13 @@ singleBinary:
   replicas: 1
   persistence:
     enabled: false                       # logs somem se o pod reiniciar (aceitável no lab)
+  # Sem PVC o chart não monta nada em /var/loki e o root fs é read-only: usamos emptyDir.
+  extraVolumes:
+    - name: loki-data
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: loki-data
+      mountPath: /var/loki
   resources:
     requests: { cpu: 100m, memory: 256Mi }
     limits: { memory: 512Mi }
