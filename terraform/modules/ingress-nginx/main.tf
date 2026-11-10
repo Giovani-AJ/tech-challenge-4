@@ -26,11 +26,11 @@ resource "helm_release" "ingress_nginx" {
     value = "LoadBalancer"
   }
 
-  # NLB em vez do Classic ELB padrão: mais barato e sem cobrança por LCU ociosa.
-  set {
-    name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type"
-    value = "nlb"
-  }
+  # Classic ELB (tipo padrão do Kubernetes), e não NLB: nesta conta AWS a criação de NLB/ALB é
+  # recusada pela AWS ("This AWS account currently does not support creating load balancers",
+  # OperationNotPermitted em ELBv2), mas o Classic ELB (API ELB v1) funciona. Por isso NÃO usamos a
+  # annotation service.beta.kubernetes.io/aws-load-balancer-type=nlb. Validado em 10/11/2026:
+  # o ELB foi criado e a API respondeu HTTP 200 por ele. Se a conta for liberada, dá para voltar ao NLB.
 
   set {
     name  = "controller.metrics.enabled"
