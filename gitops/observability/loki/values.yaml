@@ -36,9 +36,10 @@ singleBinary:
   extraVolumeMounts:
     - name: loki-data
       mountPath: /var/loki
+  # 1Gi: com 512Mi o Loki sofria OOMKilled ao ingerir os logs de todos os pods e consultar 1h de dados.
   resources:
-    requests: { cpu: 100m, memory: 256Mi }
-    limits: { memory: 512Mi }
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 1Gi }
 
 # Zera os componentes dos outros modos.
 backend: { replicas: 0 }
