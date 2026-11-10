@@ -19,7 +19,7 @@ spec:
         - name: auth-service
           # Substitua 681447159486 pelo output "ecr_repository_urls" do Terraform
           # antes do primeiro push (o CI só reescreve a tag, não o registry/host).
-          image: 681447159486.dkr.ecr.us-east-1.amazonaws.com/auth-service:v1.0.0-5698b11
+          image: 681447159486.dkr.ecr.us-east-1.amazonaws.com/auth-service:v1.0.0-7ce6e69
           ports:
             - containerPort: 8001
           envFrom:
